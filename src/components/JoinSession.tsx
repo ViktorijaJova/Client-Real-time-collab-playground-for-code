@@ -10,7 +10,7 @@ const JoinSession: React.FC = () => {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        const socket = io('http://localhost:4000'); // Ensure to import io from socket.io-client
+        const socket = io('http://localhost:4000 || "https://obscure-retreat-63973-92abc2c62e6e.herokuapp.com/"'); // Ensure to import io from socket.io-client
 
         const fetchSession = async () => {
             try {
