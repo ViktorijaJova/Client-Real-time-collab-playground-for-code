@@ -1,38 +1,34 @@
-// src/App.tsx
-import React, { useEffect, useState } from 'react';
-import io from 'socket.io-client';
+import React, { useState } from 'react';
+import SessionManager from './components/SessionManager';
 import CodeEditor from './components/CodeEditor';
-import SessionManager from './components/SessionManager'; // Import the SessionManager
-
-const socket = io('http://localhost:4000'); // Update with your server URL
 
 const App: React.FC = () => {
-    const [code, setCode] = useState<string>(''); // Default code
+    const [sessionId, setSessionId] = useState<string | null>(null);
+    const [code, setCode] = useState('');
 
-    useEffect(() => {
-        socket.on('codeChange', (newCode: string) => {
-            setCode(newCode);
-        });
+    const handleSessionCreated = (newSessionId: string) => {
+        setSessionId(newSessionId);
+    };
 
-        return () => {
-            socket.off('codeChange');
-        };
-    }, []);
+    const handleSessionJoined = (joinedSessionId: string, code: string) => {
+        setSessionId(joinedSessionId);
+        setCode(code);
+    };
 
     const handleCodeChange = (newCode: string) => {
         setCode(newCode);
-        socket.emit('codeChange', newCode);
     };
 
     return (
         <div>
-            <h1>Real-Time Collaborative Code Playground </h1>
-            
             {/* Render the SessionManager component */}
-            <SessionManager />
-            
-            {/* Optionally render the CodeEditor here or conditionally based on session */}
-            <CodeEditor code={code} onCodeChange={handleCodeChange} />
+            <SessionManager 
+                onSessionCreated={handleSessionCreated} 
+                onSessionJoined={handleSessionJoined} // Pass join handler
+            />
+
+            {/* Only show the CodeEditor if a session has been joined or created */}
+            {sessionId && <CodeEditor code={code} onCodeChange={handleCodeChange} />}
         </div>
     );
 };
