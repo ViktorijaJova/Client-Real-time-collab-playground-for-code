@@ -2,8 +2,7 @@
 import axios from 'axios';
 
 // Use the local URL if it is available, otherwise fall back to the production URL
-//const API_BASE_URL = 'https://obscure-retreat-63973-92abc2c62e6e.herokuapp.com/api';
-const API_BASE_URL = 'http://localhost:4000/api';
+const API_BASE_URL = 'http://localhost:4000/api'; // Change as needed for production
 
 // Function to create a new session
 export const createSession = async ({ creatorId, code }: { creatorId: string; code: string }) => {

@@ -5,7 +5,6 @@ import { io } from 'socket.io-client';
 import CreateSession from './components/CreateSession';
 import JoinSession from './components/JoinSession';
 
-// const socket = io('https://obscure-retreat-63973-92abc2c62e6e.herokuapp.com'); // Production URL
 const socket = io('http://localhost:4000'); // Local URL
 
 const App: React.FC = () => {
@@ -15,6 +14,7 @@ const App: React.FC = () => {
     useEffect(() => {
         // Listen for code changes from other users
         socket.on('codeChange', (newCode: string) => {
+            console.log('Received codeChange:', newCode);
             setCode(newCode);
         });
 
@@ -26,18 +26,19 @@ const App: React.FC = () => {
     const handleCodeChange = (newValue: string | undefined) => {
         if (newValue) {
             setCode(newValue);
-            socket.emit('codeChange', newValue); // Emit the code change
+            socket.emit('codeChange', { sessionId, code: newValue }); // Emit the code change
         }
     };
 
     const handleSessionCreated = (id: string) => {
         setSessionId(id);
+        socket.emit('joinSession', id); // Join the session upon creation
     };
 
     const handleSessionJoined = (id: string, initialCode: string) => {
         setSessionId(id);
         setCode(initialCode);
-        socket.emit('codeChange', initialCode); // Emit initial code when joining
+        socket.emit('joinSession', id); // Join the session upon joining
     };
 
     return (
