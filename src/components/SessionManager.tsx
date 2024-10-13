@@ -1,53 +1,60 @@
-import React, { useState } from 'react';
-import { createSession, getSession, updateSessionCode } from '../utils/api'; // Import the updateSessionCode function
+import React, { useState, useEffect, useRef } from 'react';
+import { createSession } from '../utils/api';
 import CodeEditor from './CodeEditor';
+import { io } from 'socket.io-client';
 
+// Define the interface for props
 interface SessionManagerProps {
     onSessionCreated: (newSessionId: string) => void;
-    onSessionJoined: (sessionId: string, code: string) => void;
+    onSessionJoined: (joinedSessionId: string, code: string) => void;
 }
 
 const SessionManager: React.FC<SessionManagerProps> = ({ onSessionCreated, onSessionJoined }) => {
     const [creatorId, setCreatorId] = useState('');
     const [sessionId, setSessionId] = useState<string | null>(null);
-    const [joinSessionId, setJoinSessionId] = useState<string>(''); 
-    const [code, setCode] = useState(''); 
-    const [error, setError] = useState('');
+    const [code, setCode] = useState('');
+    const socketRef = useRef<any>(null);
+
+    useEffect(() => {
+        if (sessionId) {
+            // Establish WebSocket connection
+            const socket = io('http://localhost:4000'); // Replace with production WebSocket URL
+            socketRef.current = socket;
+
+            // Join the session room
+            socket.emit('joinSession', sessionId);
+
+            // Notify parent component that the session has been joined
+            onSessionJoined(sessionId, code);
+
+            // Listen for real-time code updates
+            socket.on('codeChange', (updatedCode: string) => {
+                setCode(updatedCode);
+            });
+
+            // Cleanup on unmount
+            return () => {
+                socket.disconnect();
+            };
+        }
+    }, [sessionId, onSessionJoined]);
 
     const handleCreateSession = async () => {
         try {
-            setError('');
-            const newSession = await createSession({ creatorId, code: '' }); // Create with empty code
+            const newSession = await createSession({ creatorId, code: '' });
             setSessionId(newSession.id);
+            // Notify parent component that a new session has been created
             onSessionCreated(newSession.id);
-            console.log('Session created:', newSession);
         } catch (error) {
             console.error('Error creating session:', error);
-            setError('Failed to create session. Please try again.');
         }
     };
 
-    const handleJoinSession = async () => {
-        try {
-            setError('');
-            const session = await getSession(joinSessionId);
-            if (session) {
-                setSessionId(session.id);
-                setCode(session.code); // Set the code from the session
-                onSessionJoined(session.id, session.code);
-                console.log('Session joined:', session);
-            }
-        } catch (error) {
-            console.error('Error joining session:', error);
-            setError('Failed to join session. Please check the session ID.');
-        }
-    };
-
-    // Update the code in the backend whenever it changes
-    const handleCodeChange = async (newCode: string) => {
+    const handleCodeChange = (newCode: string) => {
         setCode(newCode);
-        if (sessionId) {
-            await updateSessionCode(sessionId, newCode); // Call API to update code in session
+        // Emit the code change to other users
+        if (socketRef.current && sessionId) {
+            socketRef.current.emit('codeChange', { sessionId, code: newCode });
         }
     };
 
@@ -58,27 +65,10 @@ const SessionManager: React.FC<SessionManagerProps> = ({ onSessionCreated, onSes
                 type="text"
                 value={creatorId}
                 onChange={(e) => setCreatorId(e.target.value)}
-                placeholder="Enter your user ID (any number)"
+                placeholder="Enter your user ID"
             />
             <button onClick={handleCreateSession}>Create Session</button>
-            
-            <h1>Or Join a Session</h1>
-            <input
-                type="text"
-                value={joinSessionId}
-                onChange={(e) => setJoinSessionId(e.target.value)}
-                placeholder="Enter session ID to join"
-            />
-            <button onClick={handleJoinSession}>Join Session</button>
-            
-            {error && <p style={{ color: 'red' }}>{error}</p>}
-            {sessionId && (
-                <div>
-                    <h2>Session ID: {sessionId}</h2>
-                    <p>Creator ID: {creatorId}</p>
-                    <CodeEditor code={code} onCodeChange={handleCodeChange} />
-                </div>
-            )}
+            <CodeEditor code={code} onCodeChange={handleCodeChange} />
         </div>
     );
 };

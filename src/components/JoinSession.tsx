@@ -1,17 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getSession, updateSessionCode } from '../utils/api';
+import { getSession } from '../utils/api';
 import CodeEditor from './CodeEditor';
-import { io } from 'socket.io-client'; // Import io from socket.io-client
+import { io } from 'socket.io-client';
 
 const JoinSession: React.FC = () => {
     const { sessionId } = useParams<{ sessionId: string }>();
     const [code, setCode] = useState('');
     const [error, setError] = useState('');
+    const socketRef = useRef<any>(null);
 
     useEffect(() => {
-        const socket = io('http://localhost:4000 || "https://obscure-retreat-63973-92abc2c62e6e.herokuapp.com/"'); // Ensure to import io from socket.io-client
+        // Establish WebSocket connection
+        const socket = io('http://localhost:4000'); // Or your production WebSocket URL
+        socketRef.current = socket;
 
+        // Join the session room
+        if (sessionId) {
+            socket.emit('joinSession', sessionId);
+        }
+
+        // Listen for real-time code updates
+        socket.on('codeChange', (updatedCode: string) => {
+            setCode(updatedCode);
+        });
+
+        // Fetch the initial session code when joining
         const fetchSession = async () => {
             try {
                 if (sessionId) {
@@ -23,33 +37,19 @@ const JoinSession: React.FC = () => {
                 setError('Failed to join session.');
             }
         };
-
         fetchSession();
 
-        // Listen for code changes
-        socket.on('codeChange', (updatedCode: string) => { // Define the type for updatedCode
-            setCode(updatedCode);
-        });
-
-        // Cleanup on component unmount
+        // Cleanup WebSocket on component unmount
         return () => {
-            socket.disconnect(); // Disconnect socket on unmount
+            socket.disconnect();
         };
     }, [sessionId]);
 
-    const handleCodeChange = async (newCode: string) => {
+    const handleCodeChange = (newCode: string) => {
         setCode(newCode);
-
-        if (sessionId) {
-            try {
-                await updateSessionCode(sessionId, newCode);
-            } catch (error) {
-                console.error('Error updating session code:');
-                setError('Failed to update code in session.');
-            }
-        } else {
-            console.error('Session ID is undefined. Cannot update session code.');
-            setError('Unable to update code because the session ID is undefined.');
+        // Emit the code change to other users
+        if (socketRef.current) {
+            socketRef.current.emit('codeChange', { sessionId, code: newCode });
         }
     };
 

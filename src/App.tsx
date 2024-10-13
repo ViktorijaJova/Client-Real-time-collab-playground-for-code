@@ -1,34 +1,47 @@
-import React, { useState } from 'react';
-import SessionManager from './components/SessionManager';
-import CodeEditor from './components/CodeEditor';
+// src/App.tsx
+import React, { useEffect, useState } from 'react';
+import { Editor } from '@monaco-editor/react'; // Correct import
+import { io } from 'socket.io-client';
+
+const socket = io('http://localhost:4000'); // Change to your backend URL in production
 
 const App: React.FC = () => {
-    const [sessionId, setSessionId] = useState<string | null>(null);
-    const [code, setCode] = useState('');
+    const [code, setCode] = useState<string>(''); // State to store the code
 
-    const handleSessionCreated = (newSessionId: string) => {
-        setSessionId(newSessionId);
-    };
+    useEffect(() => {
+        // Listen for code changes from the server
+        socket.on('codeChange', (newCode: string) => {
+            console.log('Received code change:', newCode); // Log received code
+            setCode(newCode); // Update local state with new code
+        });
+    
+        return () => {
+            socket.off('codeChange'); // Clean up the listener on unmount
+        };
+    }, []);
 
-    const handleSessionJoined = (joinedSessionId: string, code: string) => {
-        setSessionId(joinedSessionId);
-        setCode(code);
+    const handleCodeChange = (newValue: string | undefined) => {
+        if (newValue) {
+            setCode(newValue); // Update local code state
+            console.log('Emitting code change:', newValue); // Log the emitted code
+            socket.emit('codeChange', newValue); // Emit code change to the server
+        }
     };
-
-    const handleCodeChange = (newCode: string) => {
-        setCode(newCode);
-    };
+    
 
     return (
-        <div>
-            {/* Render the SessionManager component */}
-            <SessionManager 
-                onSessionCreated={handleSessionCreated} 
-                onSessionJoined={handleSessionJoined} // Pass join handler
+        <div style={{ height: '100vh' }}>
+            <div>Test</div>
+            <Editor
+                height="100%"
+                language="javascript" // Change to your desired language
+                value={code}
+                onChange={handleCodeChange}
+                options={{
+                    automaticLayout: true,
+                    minimap: { enabled: false }, // Disable minimap for better visibility
+                }}
             />
-
-            {/* Only show the CodeEditor if a session has been joined or created */}
-            {sessionId && <CodeEditor code={code} onCodeChange={handleCodeChange} />}
         </div>
     );
 };
