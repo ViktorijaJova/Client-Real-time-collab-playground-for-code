@@ -1,63 +1,34 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { getSession } from '../utils/api';
-import CodeEditor from './CodeEditor';
-import { io } from 'socket.io-client';
+// src/components/JoinSession.tsx
+import React, { useState } from 'react';
+import axios from 'axios';
 
-const JoinSession: React.FC = () => {
-    const { sessionId } = useParams<{ sessionId: string }>();
-    const [code, setCode] = useState('');
-    const [error, setError] = useState('');
-    const socketRef = useRef<any>(null);
+interface JoinSessionProps {
+    onSessionJoined: (id: string, initialCode: string) => void;
+}
 
-    useEffect(() => {
-        // Establish WebSocket connection
-        const socket = io('http://localhost:4000'); // Or your production WebSocket URL
-        socketRef.current = socket;
+const JoinSession: React.FC<JoinSessionProps> = ({ onSessionJoined }) => {
+    const [sessionId, setSessionId] = useState('');
 
-        // Join the session room
-        if (sessionId) {
-            socket.emit('joinSession', sessionId);
-        }
-
-        // Listen for real-time code updates
-        socket.on('codeChange', (updatedCode: string) => {
-            setCode(updatedCode);
-        });
-
-        // Fetch the initial session code when joining
-        const fetchSession = async () => {
-            try {
-                if (sessionId) {
-                    const session = await getSession(sessionId);
-                    setCode(session.code);
-                }
-            } catch (error) {
-                console.error('Error fetching session:', error);
-                setError('Failed to join session.');
-            }
-        };
-        fetchSession();
-
-        // Cleanup WebSocket on component unmount
-        return () => {
-            socket.disconnect();
-        };
-    }, [sessionId]);
-
-    const handleCodeChange = (newCode: string) => {
-        setCode(newCode);
-        // Emit the code change to other users
-        if (socketRef.current) {
-            socketRef.current.emit('codeChange', { sessionId, code: newCode });
+    const handleJoinSession = async () => {
+        try {
+            const response = await axios.get(`http://localhost:4000/api/sessions/${sessionId}`);
+            console.log('Session data:', response.data);
+            onSessionJoined(response.data.id, response.data.code); // Call parent function with session data
+        } catch (error) {
+            console.error('Error joining session:', error);
         }
     };
 
     return (
         <div>
-            <h1>Join Session</h1>
-            {error && <p style={{ color: 'red' }}>{error}</p>}
-            <CodeEditor code={code} onCodeChange={handleCodeChange} />
+            <h2>Join an Existing Session</h2>
+            <input 
+                type="text" 
+                placeholder="Session ID" 
+                value={sessionId} 
+                onChange={(e) => setSessionId(e.target.value)} 
+            />
+            <button onClick={handleJoinSession}>Join Session</button>
         </div>
     );
 };

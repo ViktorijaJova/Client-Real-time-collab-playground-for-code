@@ -1,48 +1,67 @@
 // src/App.tsx
 import React, { useEffect, useState } from 'react';
-import { Editor } from '@monaco-editor/react'; // Correct import
+import { Editor } from '@monaco-editor/react';
 import { io } from 'socket.io-client';
+import CreateSession from './components/CreateSession';
+import JoinSession from './components/JoinSession';
 
-// Replace with your Heroku backend URL
-const socket = io('https://obscure-retreat-63973-92abc2c62e6e.herokuapp.com'); // Change to your backend URL
-//const socket = io('http://localhost:4000'); // Change to your backend URL in production
+// const socket = io('https://obscure-retreat-63973-92abc2c62e6e.herokuapp.com'); // Production URL
+const socket = io('http://localhost:4000'); // Local URL
 
 const App: React.FC = () => {
-    const [code, setCode] = useState<string>(''); // State to store the code
+    const [code, setCode] = useState<string>('');
+    const [sessionId, setSessionId] = useState<string | null>(null);
 
     useEffect(() => {
-        // Listen for code changes from the server
+        // Listen for code changes from other users
         socket.on('codeChange', (newCode: string) => {
-            console.log('Received code change:', newCode); // Log received code
-            setCode(newCode); // Update local state with new code
+            setCode(newCode);
         });
-    
+
         return () => {
-            socket.off('codeChange'); // Clean up the listener on unmount
+            socket.off('codeChange');
         };
     }, []);
 
     const handleCodeChange = (newValue: string | undefined) => {
         if (newValue) {
-            setCode(newValue); // Update local code state
-            console.log('Emitting code change:', newValue); // Log the emitted code
-            socket.emit('codeChange', newValue); // Emit code change to the server
+            setCode(newValue);
+            socket.emit('codeChange', newValue); // Emit the code change
         }
+    };
+
+    const handleSessionCreated = (id: string) => {
+        setSessionId(id);
+    };
+
+    const handleSessionJoined = (id: string, initialCode: string) => {
+        setSessionId(id);
+        setCode(initialCode);
+        socket.emit('codeChange', initialCode); // Emit initial code when joining
     };
 
     return (
         <div style={{ height: '100vh' }}>
-            <div>Test</div>
-            <Editor
-                height="100%"
-                language="javascript" // Change to your desired language
-                value={code}
-                onChange={handleCodeChange}
-                options={{
-                    automaticLayout: true,
-                    minimap: { enabled: false }, // Disable minimap for better visibility
-                }}
-            />
+            {!sessionId ? (
+                <>
+                    <CreateSession onSessionCreated={handleSessionCreated} />
+                    <JoinSession onSessionJoined={handleSessionJoined} />
+                </>
+            ) : (
+                <>
+                    <h2>Editing Session: {sessionId}</h2>
+                    <Editor
+                        height="100%"
+                        language="javascript"
+                        value={code}
+                        onChange={handleCodeChange}
+                        options={{
+                            automaticLayout: true,
+                            minimap: { enabled: false },
+                        }}
+                    />
+                </>
+            )}
         </div>
     );
 };
