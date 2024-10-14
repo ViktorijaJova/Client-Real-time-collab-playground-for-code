@@ -13,6 +13,26 @@ const App: React.FC = () => {
     const [output, setOutput] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [sessionLink, setSessionLink] = useState<string>(''); // State to hold the session link
+    const [isLocked, setIsLocked] = useState(false);
+    const [lockStatusMessage, setLockStatusMessage] = useState<string | null>(null); // State for lock status message
+
+    const kickParticipant = (userName: string) => {
+        if (sessionId) {
+            socket.emit('kickParticipant', sessionId, userName);
+        }
+    };
+
+    const lockSession = () => {
+        if (sessionId) {
+            socket.emit('lockSession', sessionId);
+        }
+    };
+
+    const unlockSession = () => {
+        if (sessionId) {
+            socket.emit('unlockSession', sessionId);
+        }
+    };
 
     // Undo/Redo Stacks
     const undoStack = useRef<string[]>([]);
@@ -21,6 +41,20 @@ const App: React.FC = () => {
     useEffect(() => {
         socket.on('connect', () => {
             console.log('Socket connected:', socket.id);
+        });
+
+        socket.on('sessionLocked', () => {
+            setIsLocked(true);
+            if (role === 'participant') {
+                setLockStatusMessage('The session is now locked. You cannot edit the code.');
+            }
+        });
+
+        socket.on('sessionUnlocked', () => {
+            setIsLocked(false);
+            if (role === 'participant') {
+                setLockStatusMessage('The session is now unlocked. You can edit the code again.');
+            }
         });
 
         socket.on('disconnect', (reason) => {
@@ -46,10 +80,12 @@ const App: React.FC = () => {
         return () => {
             socket.off('codeChange');
             socket.off('codeOutput');
+            socket.off('sessionLocked');
+            socket.off('sessionUnlocked');
             socket.off('connect');
             socket.off('disconnect');
         };
-    }, [code]);
+    }, [code, role]); // Add role as a dependency
 
     const handleCodeChange = (newValue: string | undefined) => {
         if (newValue) {
@@ -96,12 +132,6 @@ const App: React.FC = () => {
         socket.emit('joinSession', id);
     };
 
-    const runCode = () => {
-        if (sessionId && code) {
-            socket.emit('runCode', sessionId, code);
-        }
-    };
-
     const handleCopyLink = () => {
         navigator.clipboard.writeText(sessionLink); // Copy the link to the clipboard
         alert('Session link copied to clipboard!'); // Notify the user
@@ -133,12 +163,24 @@ const App: React.FC = () => {
                         options={{
                             automaticLayout: true,
                             minimap: { enabled: false },
+                            readOnly: isLocked // Disable editing if the session is locked
                         }}
                     />
+                    {role === 'creator' && (
+                        <>
+                            <button onClick={() => kickParticipant('participantUserName')}>Kick Participant</button>
+                            <button onClick={lockSession}>Lock Session</button>
+                            <button onClick={unlockSession}>Unlock Session</button>
+                        </>
+                    )}
+                    {role === 'participant' && lockStatusMessage && ( // Show lock status message for participants
+                        <div style={{ marginTop: '20px', background: 'orange', padding: '10px' }}>
+                            <h3>{lockStatusMessage}</h3>
+                        </div>
+                    )}
                     <div style={{ marginTop: '20px' }}>
-                        <button style={{ background: 'red', padding: '10px' }} onClick={runCode}>Run Code</button>
-                        <button style={{ marginLeft: '10px', background: 'green', padding: '10px' }} onClick={handleUndo}>Undo</button>
-                        <button style={{ marginLeft: '10px', background: 'blue', padding: '10px' }} onClick={handleRedo}>Redo</button>
+                        <button style={{ background: 'red', padding: '10px' }} onClick={handleUndo}>Undo</button>
+                        <button style={{ marginLeft: '10px', background: 'green', padding: '10px' }} onClick={handleRedo}>Redo</button>
                     </div>
                     {output && (
                         <div style={{ marginTop: '20px', background: 'red', padding: '10px' }}>
