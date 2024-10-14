@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Editor } from '@monaco-editor/react';
 import { io } from 'socket.io-client';
 import CreateSession from './components/CreateSession';
@@ -14,6 +14,10 @@ const App: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [sessionLink, setSessionLink] = useState<string>(''); // State to hold the session link
 
+    // Undo/Redo Stacks
+    const undoStack = useRef<string[]>([]);
+    const redoStack = useRef<string[]>([]);
+
     useEffect(() => {
         socket.on('connect', () => {
             console.log('Socket connected:', socket.id);
@@ -24,6 +28,8 @@ const App: React.FC = () => {
         });
 
         socket.on('codeChange', (newCode: string) => {
+            // On receiving new code from another client, update and push to undoStack
+            undoStack.current.push(code);  // Save current code state
             setCode(newCode);
         });
 
@@ -43,12 +49,36 @@ const App: React.FC = () => {
             socket.off('connect');
             socket.off('disconnect');
         };
-    }, []);
+    }, [code]);
 
     const handleCodeChange = (newValue: string | undefined) => {
         if (newValue) {
+            undoStack.current.push(code);  // Save the previous code state before changing
+            redoStack.current = [];  // Clear redoStack on new change
             setCode(newValue);
             socket.emit('codeChange', { sessionId, code: newValue });
+        }
+    };
+
+    const handleUndo = () => {
+        if (undoStack.current.length > 0) {
+            const previousCode = undoStack.current.pop(); // Remove last change
+            redoStack.current.push(code);  // Save current code to redoStack
+            if (previousCode !== undefined) {
+                setCode(previousCode);
+                socket.emit('codeChange', { sessionId, code: previousCode });
+            }
+        }
+    };
+
+    const handleRedo = () => {
+        if (redoStack.current.length > 0) {
+            const nextCode = redoStack.current.pop(); // Get the last undone change
+            undoStack.current.push(code);  // Save current code to undoStack
+            if (nextCode !== undefined) {
+                setCode(nextCode);
+                socket.emit('codeChange', { sessionId, code: nextCode });
+            }
         }
     };
 
@@ -105,16 +135,20 @@ const App: React.FC = () => {
                             minimap: { enabled: false },
                         }}
                     />
-                    <button style={{ marginTop: '20px', background: 'red', padding: '10px' }} onClick={runCode}>Run Code</button>
+                    <div style={{ marginTop: '20px' }}>
+                        <button style={{ background: 'red', padding: '10px' }} onClick={runCode}>Run Code</button>
+                        <button style={{ marginLeft: '10px', background: 'green', padding: '10px' }} onClick={handleUndo}>Undo</button>
+                        <button style={{ marginLeft: '10px', background: 'blue', padding: '10px' }} onClick={handleRedo}>Redo</button>
+                    </div>
                     {output && (
                         <div style={{ marginTop: '20px', background: 'red', padding: '10px' }}>
-                            <h3 style={{ marginTop: '20px' }}>Output:</h3>
+                            <h3>Output:</h3>
                             <pre>{output}</pre>
                         </div>
                     )}
                     {error && (
                         <div style={{ marginTop: '20px', background: 'yellow', padding: '10px', color: 'black' }}>
-                            <h3 style={{ marginTop: '20px' }}>Error:</h3>
+                            <h3>Error:</h3>
                             <pre>{error}</pre>
                         </div>
                     )}
