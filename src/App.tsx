@@ -15,7 +15,7 @@ const App: React.FC = () => {
     const [sessionLink, setSessionLink] = useState<string>(''); // State to hold the session link
     const [isLocked, setIsLocked] = useState(false);
     const [lockStatusMessage, setLockStatusMessage] = useState<string | null>(null); // State for lock status message
-
+    const [participants, setParticipants] = useState<string[]>([]);
     const kickParticipant = (userName: string) => {
         if (sessionId) {
             socket.emit('kickParticipant', sessionId, userName);
@@ -76,6 +76,7 @@ const App: React.FC = () => {
                 setError(null);
             }
         });
+
 
         return () => {
             socket.off('codeChange');
