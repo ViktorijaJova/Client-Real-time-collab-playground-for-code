@@ -12,6 +12,7 @@ const App: React.FC = () => {
     const [role, setRole] = useState<string | null>(null); // Store user role
     const [output, setOutput] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [sessionLink, setSessionLink] = useState<string>(''); // State to hold the session link
 
     useEffect(() => {
         socket.on('connect', () => {
@@ -54,6 +55,7 @@ const App: React.FC = () => {
     const handleSessionCreated = (id: string, userRole: string) => {
         setSessionId(id);
         setRole(userRole); // Set the role when a session is created
+        setSessionLink(`http://localhost:3000/session/${id}`); // Generate the session link
         socket.emit('joinSession', id);
     };
 
@@ -70,6 +72,11 @@ const App: React.FC = () => {
         }
     };
 
+    const handleCopyLink = () => {
+        navigator.clipboard.writeText(sessionLink); // Copy the link to the clipboard
+        alert('Session link copied to clipboard!'); // Notify the user
+    };
+
     return (
         <div style={{ height: '100vh' }}>
             {!sessionId ? (
@@ -81,6 +88,13 @@ const App: React.FC = () => {
             ) : (
                 <>
                     <h2>Editing Session: {sessionId} (Role: {role})</h2>
+                    {sessionLink && (
+                        <div>
+                            <p>Share this link to join the session:</p>
+                            <input type="text" value={sessionLink} readOnly />
+                            <button onClick={handleCopyLink}>Copy Link</button>
+                        </div>
+                    )}
                     <Editor
                         height="80%"
                         language="javascript"
