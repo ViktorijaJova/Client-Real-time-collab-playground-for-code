@@ -11,7 +11,10 @@ const CreateSession: React.FC<CreateSessionProps> = ({ onSessionCreated }) => {
   const handleCreateSession = async () => {
     try {
       const initialCode = "// Hello World"; // Default code
-      const response = await axios.post("http://localhost:4000/api/sessions", {
+      const response = await axios.post("https://obscure-retreat-63973-92abc2c62e6e.herokuapp.com/api/sessions", // for production
+       // const response = await axios.post("http://localhost:4000/api/sessions", for local testing
+
+         {
         creatorId,
         code: initialCode,
       });
