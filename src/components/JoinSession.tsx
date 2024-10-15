@@ -30,21 +30,28 @@ const JoinSession: React.FC<JoinSessionProps> = ({ onSessionJoined }) => {
     };
 
     return (
-        <div>
-            <h2>Join an Existing Session</h2>
+        <div className="flex flex-col items-center justify-center bg-white p-6 rounded-lg shadow-md w-full max-w-sm mx-auto mt-6">
+            <h2 className="text-xl font-semibold text-blue-400 mb-4">Join an Existing Session</h2>
             <input
                 type="text"
                 placeholder="Enter your name"
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
+                className="w-full p-2 mb-4 border text-pink-200 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
             />
             <input
                 type="text"
                 placeholder="Enter session URL"
                 value={sessionUrl}
                 onChange={(e) => setSessionUrl(e.target.value)}
+                className="w-full p-2 mb-4 border text-pink-200 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
             />
-            <button onClick={handleJoinSession}>Join Session</button>
+            <button
+                onClick={handleJoinSession}
+                className="bg-blue-300 text-white px-4 py-2 rounded-lg w-full hover:bg-blue-400 transition duration-300"
+            >
+                Join Session
+            </button>
         </div>
     );
 };
