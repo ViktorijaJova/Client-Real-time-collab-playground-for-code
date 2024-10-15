@@ -13,26 +13,30 @@ const App: React.FC = () => {
   const [output, setOutput] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sessionLink, setSessionLink] = useState<string>("");
-  const [isLocked, setIsLocked] = useState(false); // Lock state for participants only
+  const [isLocked, setIsLocked] = useState(false);
   const [lockStatusMessage, setLockStatusMessage] = useState<string | null>(
     null
   );
-  const [participants, setParticipants] = useState<string[]>([]); // Store participant usernames
-
+  const [typingUser, setTypingUser] = useState<string | null>(null);
+  const [participants, setParticipants] = useState<string[]>([]);
   const undoStack = useRef<string[]>([]);
   const redoStack = useRef<string[]>([]);
 
   const kickParticipant = (userName: string) => {
     if (sessionId) {
       socket.emit("kickParticipant", sessionId, userName);
-
       // Immediately update the frontend to remove the kicked participant
       setParticipants((prevParticipants) =>
         prevParticipants.filter((participant) => participant !== userName)
       );
     }
   };
-  
+
+  const handleTyping = () => {
+    if (sessionId) {
+      socket.emit("typing", { role, userName: role });
+    }
+  };
 
   const lockSession = () => {
     if (sessionId) {
@@ -47,32 +51,39 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    socket.on("connect", () => {
-      console.log("Socket connected:", socket.id);
+    socket.on("connect", () => {});
+
+    socket.on("sessionLocked", () => {
+      if (role !== "creator") {
+        setIsLocked(true);
+        setLockStatusMessage(
+          "The session is now locked. You cannot edit the code sorry!"
+        );
+      }
     });
 
-    // Lock the session for participants only
-    socket.on("sessionLocked", () => {
-        console.log("Session locked received");
-        if (role !== "creator") {
-          setIsLocked(true); // Lock for participants
-          setLockStatusMessage("The session is now locked. You cannot edit the code.");
-        }
-      });
-      
-      socket.on("sessionUnlocked", () => {
-        console.log("Session unlocked received");
-        if (role !== "creator") {
-          setIsLocked(false); // Unlock for participants
-          setLockStatusMessage("The session is now unlocked. You can edit the code again.");
-        }
-      });
+    socket.on("typingIndicator", ({ userName }) => {
+      setTypingUser(userName);
+      const typingTimeout = setTimeout(() => {
+        setTypingUser(null);
+      }, 2000);
+
+      return () => clearTimeout(typingTimeout);
+    });
+
+    socket.on("sessionUnlocked", () => {
+      if (role !== "creator") {
+        setIsLocked(false);
+        setLockStatusMessage(
+          "The session is now unlocked. You can edit the code again yeyy!"
+        );
+      }
+    });
 
     socket.on("disconnect", (reason) => {
       console.log("Socket disconnected:", reason);
     });
 
-    // Receive code changes from other participants
     socket.on("codeChange", (newCode: string) => {
       undoStack.current.push(code);
       setCode(newCode);
@@ -88,9 +99,9 @@ const App: React.FC = () => {
       }
     });
 
-    socket.on('currentParticipants', (participants: string[]) => {
-        const uniqueParticipants = Array.from(new Set(participants)); // Remove duplicates
-        setParticipants(uniqueParticipants);
+    socket.on("currentParticipants", (participants: string[]) => {
+      const uniqueParticipants = Array.from(new Set(participants)); // Remove duplicates
+      setParticipants(uniqueParticipants);
     });
 
     socket.on("participantJoined", (userName: string) => {
@@ -100,7 +111,7 @@ const App: React.FC = () => {
     socket.on("participantKicked", (userName: string) => {
       // If the kicked participant is the current user, redirect to the welcome screen
       if (userName === role) {
-        alert(`You have been kicked from session ${sessionId}`);
+        alert(`Snap! You have been kicked from session ${sessionId}`);
         setSessionId(null);
         setParticipants([]); // Clear participants list
         setCode(""); // Clear code
@@ -124,17 +135,16 @@ const App: React.FC = () => {
 
   const handleCodeChange = (newValue: string | undefined) => {
     if (newValue && (!isLocked || role === "creator")) {
-      // Allow changes if not locked or user is the creator
       undoStack.current.push(code);
       redoStack.current = [];
       setCode(newValue);
       socket.emit("codeChange", { sessionId, code: newValue });
+      handleTyping();
     }
   };
 
   const handleUndo = () => {
     if ((!isLocked || role === "creator") && undoStack.current.length > 0) {
-      // Allow undo if not locked or user is creator
       const previousCode = undoStack.current.pop();
       redoStack.current.push(code);
       if (previousCode !== undefined) {
@@ -146,7 +156,6 @@ const App: React.FC = () => {
 
   const handleRedo = () => {
     if ((!isLocked || role === "creator") && redoStack.current.length > 0) {
-      // Allow redo if not locked or user is creator
       const nextCode = redoStack.current.pop();
       undoStack.current.push(code);
       if (nextCode !== undefined) {
@@ -160,7 +169,7 @@ const App: React.FC = () => {
     setSessionId(id);
     setRole(userRole);
     setSessionLink(`http://localhost:3000/session/${id}`);
-    socket.emit("joinSession", id, userRole); // Include user role
+    socket.emit("joinSession", id, userRole);
   };
 
   const handleSessionJoined = (
@@ -173,7 +182,6 @@ const App: React.FC = () => {
     setRole(userRole);
     console.log(`Joined session ${id} as ${userRole}`);
     socket.emit("joinSession", id, userRole);
-    // Include user role
   };
 
   const handleCopyLink = () => {
@@ -194,7 +202,7 @@ const App: React.FC = () => {
       ) : (
         <div className="text-center w-full">
           <h2 className="text-xl font-semibold text-blue-400 mb-4">
-            Welcome to Session: {sessionId} 
+            Welcome to Session: {sessionId}
           </h2>
           {sessionLink && (
             <div className="mb-4">
@@ -217,40 +225,48 @@ const App: React.FC = () => {
               </div>
             </div>
           )}
+
           <Editor
             height="60vh"
             language="javascript"
             value={code}
-            onChange={handleCodeChange}
+            onChange={(newValue) => {
+              handleCodeChange(newValue);
+              handleTyping();
+            }}
             options={{
               automaticLayout: true,
               minimap: { enabled: false },
-              readOnly: isLocked && role !== "creator", // Lock for participants but not the creator
+              readOnly: isLocked && role !== "creator",
             }}
             className="border border-blue-400 rounded-lg"
           />
-          
-    <ul className="text-white pt-2" id="participant-list">
-        <span >Participants:</span>
-    {participants.map((participant, index) => (
-        <li key={index}>
-            {participant}
-            {role === 'creator' && participant !== 'creator' && (
-                <button
+          {typingUser && (
+            <div className="typing-indicator bg-blue-200 text-white p-2 rounded-lg mb-2">
+              {typingUser === "creator"
+                ? "Creator is typing..."
+                : `${typingUser} is typing...`}
+            </div>
+          )}
+          <ul className="text-white pt-2" id="participant-list">
+            <span>Participants:</span>
+            {participants.map((participant, index) => (
+              <li key={index}>
+                {participant}
+                {role === "creator" && participant !== "creator" && (
+                  <button
                     className="bg-red-400 ml-2  text-white px-3 py-1 rounded"
                     onClick={() => kickParticipant(participant)}
-                >
+                  >
                     Kick
-                </button>
-            )}
-        </li>
-    ))}
-</ul>
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
 
-{role === 'creator'  && (
-
+          {role === "creator" && (
             <div className="flex justify-center space-x-4 mt-4">
-        
               <button
                 className="bg-blue-300 text-white px-4 py-2 rounded-lg"
                 onClick={lockSession}
@@ -264,13 +280,12 @@ const App: React.FC = () => {
                 Unlock Session
               </button>
             </div>
-)}
-            {role !== 'creator' && lockStatusMessage && (
-
+          )}
+          {role !== "creator" && lockStatusMessage && (
             <div className="mt-4 bg-blue-300 text-white p-4 rounded-lg">
               <h3>{lockStatusMessage}</h3>
             </div>
-            )}
+          )}
           <div className="flex justify-center space-x-4 mt-6">
             <button
               className="bg-red-400 text-white px-4 py-2 rounded-lg"
