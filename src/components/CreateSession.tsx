@@ -2,7 +2,7 @@ import React from "react";
 import axios from "axios";
 
 interface CreateSessionProps {
-  onSessionCreated: (id: string, userRole: string) => void;
+  onSessionCreated: (id: string, userRole: string, initialCode: string) => void; // Updated to include initial code
 }
 
 const CreateSession: React.FC<CreateSessionProps> = ({ onSessionCreated }) => {
@@ -12,13 +12,13 @@ const CreateSession: React.FC<CreateSessionProps> = ({ onSessionCreated }) => {
     try {
       const initialCode = "// Hello World"; // Default code
       const response = await axios.post("https://obscure-retreat-63973-92abc2c62e6e.herokuapp.com/api/sessions", // for production
-       // const response = await axios.post("http://localhost:4000/api/sessions", for local testing
-
-         {
-        creatorId,
-        code: initialCode,
-      });
-      onSessionCreated(response.data.id, "creator");
+        // const response = await axios.post("http://localhost:4000/api/sessions", // for local testing
+        {
+          creatorId,
+          code: initialCode,
+        }
+      );
+      onSessionCreated(response.data.id, "creator", initialCode); // Pass initial code here
     } catch (error) {
       console.error("Error creating session:", error);
     }

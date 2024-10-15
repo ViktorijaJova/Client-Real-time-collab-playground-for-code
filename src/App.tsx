@@ -22,6 +22,7 @@ const App: React.FC = () => {
   const [participants, setParticipants] = useState<string[]>([]);
   const undoStack = useRef<string[]>([]);
   const redoStack = useRef<string[]>([]);
+  const [showLockStatusMessage, setShowLockStatusMessage] = useState(false);
 
   const kickParticipant = (userName: string) => {
     if (sessionId) {
@@ -60,6 +61,11 @@ const App: React.FC = () => {
         setLockStatusMessage(
           "The session is now locked. You cannot edit the code sorry!"
         );
+        setShowLockStatusMessage(true); // Show the message
+        // Hide message after 3 seconds
+        setTimeout(() => {
+          setShowLockStatusMessage(false);
+        }, 3000);
       }
     });
 
@@ -78,6 +84,11 @@ const App: React.FC = () => {
         setLockStatusMessage(
           "The session is now unlocked. You can edit the code again yeyy!"
         );
+        setShowLockStatusMessage(true); // Show the message
+        // Hide message after 3 seconds
+        setTimeout(() => {
+          setShowLockStatusMessage(false);
+        }, 3000);
       }
     });
 
@@ -166,13 +177,15 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSessionCreated = (id: string, userRole: string) => {
+  const handleSessionCreated = (id: string, userRole: string, initialCode: string) => {
     setSessionId(id);
     setRole(userRole);
-   // setSessionLink(`http://localhost:3000/session/${id}`); //for local development
+    setCode(initialCode); // Set the initial code for the creator
+    socket.emit("codeChange", { sessionId: id, code: initialCode }); // Emit the initial code to all participants
+    // Set the session link
     setSessionLink(`https://client-real-time-collab-playground-for-code.vercel.app/session/${id}`); // for production
     socket.emit("joinSession", id, userRole);
-  };
+};
 
   const handleSessionJoined = (
     id: string,
@@ -228,28 +241,30 @@ const App: React.FC = () => {
             </div>
           )}
 
-          <Editor
-            height="60vh"
-            language="javascript"
-            value={code}
-            onChange={(newValue) => {
-              handleCodeChange(newValue);
-              handleTyping();
-            }}
-            options={{
-              automaticLayout: true,
-              minimap: { enabled: false },
-              readOnly: isLocked && role !== "creator",
-            }}
-            className="border border-blue-400 rounded-lg"
-          />
-          {typingUser && (
-            <div className="typing-indicator bg-blue-200 text-white p-2 rounded-lg mb-2">
-              {typingUser === "creator"
-                ? "Creator is typing..."
-                : `${typingUser} is typing...`}
-            </div>
-          )}
+          <div className="relative">
+            <Editor
+              height="60vh"
+              language="javascript"
+              value={code}
+              onChange={(newValue) => {
+                handleCodeChange(newValue);
+                handleTyping();
+              }}
+              options={{
+                automaticLayout: true,
+                minimap: { enabled: false },
+                readOnly: isLocked && role !== "creator",
+              }}
+              className="border border-blue-400 rounded-lg"
+            />
+            {typingUser && (
+              <div className="absolute left-0 right-0 bottom-0 bg-blue-200 text-white p-2 rounded-lg">
+                {typingUser === "creator"
+                  ? "Creator is typing..."
+                  : `${typingUser} is typing...`}
+              </div>
+            )}
+          </div>
           <ul className="text-white pt-2" id="participant-list">
             <span>Participants:</span>
             {participants.map((participant, index) => (
@@ -283,7 +298,7 @@ const App: React.FC = () => {
               </button>
             </div>
           )}
-          {role !== "creator" && lockStatusMessage && (
+          {role !== "creator" && lockStatusMessage && showLockStatusMessage && (
             <div className="mt-4 bg-blue-300 text-white p-4 rounded-lg">
               <h3>{lockStatusMessage}</h3>
             </div>
