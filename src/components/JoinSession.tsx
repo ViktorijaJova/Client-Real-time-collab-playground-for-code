@@ -11,8 +11,30 @@ const socket = io("http://localhost:4000"); // Ensure the socket connection is e
 const JoinSession: React.FC<JoinSessionProps> = ({ onSessionJoined }) => {
     const [sessionUrl, setSessionUrl] = useState(''); // Full session URL input
     const [userName, setUserName] = useState(''); // Name input
+    const [errorMessage, setErrorMessage] = useState(''); // Error message state
+
+    const isValidUrl = (url: string) => {
+        // Allow URLs with or without a port number, with a path like /session/{id}
+        const urlPattern = /^https?:\/\/[\w.-]+(:\d+)?\/session\/\w+$/; // Adjusted for port numbers and /session/{id}
+        return urlPattern.test(url);
+    };
 
     const handleJoinSession = async () => {
+        // Clear any previous error message
+        setErrorMessage('');
+
+        // Validate username
+        if (!userName.trim()) {
+            setErrorMessage('Please enter your name.');
+            return;
+        }
+
+        // Validate session URL
+        if (!isValidUrl(sessionUrl)) {
+            setErrorMessage('Please enter a valid session URL.');
+            return;
+        }
+
         try {
             const urlParts = sessionUrl.split('/');
             const id = urlParts[urlParts.length - 1]; // Get the last part of the URL as the session ID
@@ -21,17 +43,21 @@ const JoinSession: React.FC<JoinSessionProps> = ({ onSessionJoined }) => {
             const response = await axios.get(`http://localhost:4000/api/sessions/${id}`);
             const initialCode = response.data.code; // Assuming the API returns the code
             onSessionJoined(response.data.id, initialCode, 'participant'); // Notify parent with session data and role
-            
+
             // Emit the joinSession event to the socket
             socket.emit('joinSession', id, userName); // Send userName as well
         } catch (error) {
             console.error('Error joining session:', error);
+            setErrorMessage('Error joining session. Please check the URL and try again.');
         }
     };
 
     return (
         <div className="flex flex-col items-center justify-center bg-white p-6 rounded-lg shadow-md w-full max-w-sm mx-auto mt-6">
             <h2 className="text-xl font-semibold text-blue-400 mb-4">Join an Existing Session</h2>
+            {errorMessage && (
+                <p className="text-red-500 mb-4">{errorMessage}</p>
+            )}
             <input
                 type="text"
                 placeholder="Enter your name"
