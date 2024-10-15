@@ -7,7 +7,7 @@ interface CreateSessionProps {
 
 const CreateSession: React.FC<CreateSessionProps> = ({ onSessionCreated }) => {
     // No need for creatorId state since it's hardcoded
-    const creatorId = 'Creator'; // Hardcoded creator ID
+    const creatorId = 'creator'; // Hardcoded creator ID
 
     const handleCreateSession = async () => {
         try {

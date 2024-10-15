@@ -20,37 +20,38 @@ const JoinSession: React.FC<JoinSessionProps> = ({ onSessionJoined }) => {
     };
 
     const handleJoinSession = async () => {
-        // Clear any previous error message
         setErrorMessage('');
-
-        // Validate username
+    
         if (!userName.trim()) {
             setErrorMessage('Please enter your name.');
             return;
         }
-
-        // Validate session URL
+    
         if (!isValidUrl(sessionUrl)) {
             setErrorMessage('Please enter a valid session URL.');
             return;
         }
-
+    
         try {
             const urlParts = sessionUrl.split('/');
-            const id = urlParts[urlParts.length - 1]; // Get the last part of the URL as the session ID
-
-            // Fetch the initial code for the session
+            const id = urlParts[urlParts.length - 1];
+    
+            // Fetch the session code and creator's name from the backend
             const response = await axios.get(`http://localhost:4000/api/sessions/${id}`);
-            const initialCode = response.data.code; // Assuming the API returns the code
-            onSessionJoined(response.data.id, initialCode, 'participant'); // Notify parent with session data and role
-
-            // Emit the joinSession event to the socket
-            socket.emit('joinSession', id, userName); // Send userName as well
+            const initialCode = response.data.code; 
+    
+            // Notify the parent component with the session ID, initial code, and joining participant's name
+            onSessionJoined(response.data.id, initialCode, userName); 
+    
+            // Emit the joinSession event to the socket with session ID and participant's username
+            socket.emit('joinSession', id, userName);
         } catch (error) {
             console.error('Error joining session:', error);
             setErrorMessage('Error joining session. Please check the URL and try again.');
         }
     };
+    
+    
 
     return (
         <div className="flex flex-col items-center justify-center bg-white p-6 rounded-lg shadow-md w-full max-w-sm mx-auto mt-6">
