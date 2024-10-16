@@ -39,7 +39,6 @@ const App: React.FC = () => {
       socket.emit("runCode", { sessionId, code });
     }
   };
-  
 
   const handleTyping = () => {
     if (sessionId) {
@@ -109,14 +108,14 @@ const App: React.FC = () => {
     });
 
     socket.on("codeOutput", (newOutput: string) => {
-        if (newOutput.startsWith("Error:")) {
-          setError(newOutput);
-          setOutput(null);
-        } else {
-          setOutput(newOutput);
-          setError(null);
-        }
-      });
+      if (newOutput.startsWith("Error:")) {
+        setError(newOutput);
+        setOutput(null);
+      } else {
+        setOutput(newOutput);
+        setError(null);
+      }
+    });
 
     socket.on("currentParticipants", (participants: string[]) => {
       const uniqueParticipants = Array.from(new Set(participants)); // Remove duplicates
@@ -150,7 +149,7 @@ const App: React.FC = () => {
       socket.off("participantJoined");
       socket.off("participantKicked");
     };
-  }, [code, socket,role]);
+  }, [code, socket, role]);
 
   const handleCodeChange = (newValue: string | undefined) => {
     if (newValue && (!isLocked || role === "creator")) {
@@ -184,17 +183,21 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSessionCreated = (id: string, userRole: string, initialCode: string) => {
+  const handleSessionCreated = (
+    id: string,
+    userRole: string,
+    initialCode: string
+  ) => {
     setSessionId(id);
     setRole(userRole);
     setCode(initialCode); // Set the initial code for the creator
     socket.emit("codeChange", { sessionId: id, code: initialCode }); // Emit the initial code to all participants
-       setSessionLink(`http://localhost:3000/session/${id}`); // for production
+    setSessionLink(`http://localhost:3000/session/${id}`); // for production
 
     // Set the session link
-   // setSessionLink(`https://client-real-time-collab-playground-for-code.vercel.app/session/${id}`); // for production
+    // setSessionLink(`https://client-real-time-collab-playground-for-code.vercel.app/session/${id}`); // for production
     socket.emit("joinSession", id, userRole);
-};
+  };
 
   const handleSessionJoined = (
     id: string,
@@ -224,7 +227,7 @@ const App: React.FC = () => {
           <JoinSession onSessionJoined={handleSessionJoined} />
         </div>
       ) : (
-        <div className="text-center w-full">
+        <div className="w-full flex flex-col items-center">
           <h2 className="text-xl font-semibold text-blue-400 mb-4">
             Welcome to Session: {sessionId}
           </h2>
@@ -250,29 +253,49 @@ const App: React.FC = () => {
             </div>
           )}
 
-          <div className="relative">
-            <Editor
-              height="60vh"
-              language="javascript"
-              value={code}
-              onChange={(newValue) => {
-                handleCodeChange(newValue);
-                handleTyping();
-              }}
-              options={{
-                automaticLayout: true,
-                minimap: { enabled: false },
-                readOnly: isLocked && role !== "creator",
-              }}
-              className="border border-blue-400 rounded-lg"
-            />
-            {typingUser && (
-              <div className="absolute left-0 right-0 bottom-0 bg-blue-200 text-white p-2 rounded-lg">
-                {typingUser === "creator"
-                  ? "Creator is typing..."
-                  : `${typingUser} is typing...`}
-              </div>
-            )}
+          <div className="flex flex-col md:flex-row w-full">
+            {/* Editor */}
+            <div className="w-full md:w-2/3 relative">
+              <Editor
+                height="60vh"
+                language="javascript"
+                value={code}
+                onChange={(newValue) => {
+                  handleCodeChange(newValue);
+                  handleTyping();
+                }}
+                options={{
+                  automaticLayout: true,
+                  minimap: { enabled: false },
+                  readOnly: isLocked && role !== "creator",
+                }}
+                className="border border-blue-400 rounded-lg"
+              />
+              {typingUser && (
+                <div className="absolute left-0 right-0 bottom-0 bg-blue-200 text-white p-2 rounded-lg">
+                  {typingUser === "creator"
+                    ? "Creator is typing..."
+                    : `${typingUser} is typing...`}
+                </div>
+              )}
+            </div>
+
+            {/* Output */}
+            <div className="w-full md:w-1/3 md:pl-4 mt-4 md:mt-0">
+              <h3 className="text-lg font-semibold text-blue-400 mb-2">
+                Output:
+              </h3>
+              {output && (
+                <pre className="bg-white text-blue-400 p-4 rounded-lg h-60 overflow-auto">
+                  {output}
+                </pre>
+              )}
+              {error && (
+                <pre className="bg-red-800 text-white p-4 rounded-lg h-60 overflow-auto">
+                  {error}
+                </pre>
+              )}
+            </div>
           </div>
           <ul className="text-white pt-2" id="participant-list">
             <span>Participants:</span>
@@ -326,24 +349,12 @@ const App: React.FC = () => {
               Redo
             </button>
             <button
-    className="bg-blue-400 text-white px-4 py-2 rounded-lg"
-    onClick={handleRunCode} // Add this button for running code
-  >
-    Run Code
-  </button>
+              className="bg-blue-400 text-white px-4 py-2 rounded-lg"
+              onClick={handleRunCode} // Add this button for running code
+            >
+              Run Code
+            </button>
           </div>
-          {output && (
-            <div className="mt-6 bg-green-200 p-4 rounded-lg">
-              <h3>Output:</h3>
-              <pre>{output}</pre>
-            </div>
-          )}
-          {error && (
-            <div className="mt-6 bg-yellow-200 p-4 rounded-lg text-black">
-              <h3>Error:</h3>
-              <pre>{error}</pre>
-            </div>
-          )}
         </div>
       )}
     </div>
