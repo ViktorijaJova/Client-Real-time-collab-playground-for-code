@@ -4,8 +4,8 @@ import { io } from "socket.io-client";
 import CreateSession from "./components/CreateSession";
 import JoinSession from "./components/JoinSession";
 
-const socket = io("https://obscure-retreat-63973-92abc2c62e6e.herokuapp.com"); // for production
-//const socket = io("http://localhost:4000"); // for local testing
+//const socket = io("https://obscure-retreat-63973-92abc2c62e6e.herokuapp.com"); // for production
+const socket = io("http://localhost:4000"); // for local testing
 
 const App: React.FC = () => {
   const [code, setCode] = useState<string>("");
@@ -33,6 +33,13 @@ const App: React.FC = () => {
       );
     }
   };
+
+  const handleRunCode = () => {
+    if (sessionId) {
+      socket.emit("runCode", { sessionId, code });
+    }
+  };
+  
 
   const handleTyping = () => {
     if (sessionId) {
@@ -102,14 +109,14 @@ const App: React.FC = () => {
     });
 
     socket.on("codeOutput", (newOutput: string) => {
-      if (newOutput.startsWith("Error:")) {
-        setError(newOutput);
-        setOutput(null);
-      } else {
-        setOutput(newOutput);
-        setError(null);
-      }
-    });
+        if (newOutput.startsWith("Error:")) {
+          setError(newOutput);
+          setOutput(null);
+        } else {
+          setOutput(newOutput);
+          setError(null);
+        }
+      });
 
     socket.on("currentParticipants", (participants: string[]) => {
       const uniqueParticipants = Array.from(new Set(participants)); // Remove duplicates
@@ -143,7 +150,7 @@ const App: React.FC = () => {
       socket.off("participantJoined");
       socket.off("participantKicked");
     };
-  }, [code, role]);
+  }, [code, socket,role]);
 
   const handleCodeChange = (newValue: string | undefined) => {
     if (newValue && (!isLocked || role === "creator")) {
@@ -182,8 +189,10 @@ const App: React.FC = () => {
     setRole(userRole);
     setCode(initialCode); // Set the initial code for the creator
     socket.emit("codeChange", { sessionId: id, code: initialCode }); // Emit the initial code to all participants
+       setSessionLink(`http://localhost:3000/session/${id}`); // for production
+
     // Set the session link
-    setSessionLink(`https://client-real-time-collab-playground-for-code.vercel.app/session/${id}`); // for production
+   // setSessionLink(`https://client-real-time-collab-playground-for-code.vercel.app/session/${id}`); // for production
     socket.emit("joinSession", id, userRole);
 };
 
@@ -316,6 +325,12 @@ const App: React.FC = () => {
             >
               Redo
             </button>
+            <button
+    className="bg-blue-400 text-white px-4 py-2 rounded-lg"
+    onClick={handleRunCode} // Add this button for running code
+  >
+    Run Code
+  </button>
           </div>
           {output && (
             <div className="mt-6 bg-green-200 p-4 rounded-lg">
