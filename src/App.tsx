@@ -36,9 +36,11 @@ const App: React.FC = () => {
 
   const handleRunCode = () => {
     if (sessionId) {
+      // Emit 'runCode' event with sessionId and code to the server
       socket.emit("runCode", { sessionId, code });
     }
   };
+  
 
   const handleTyping = () => {
     if (sessionId) {
