@@ -6,8 +6,8 @@ interface JoinSessionProps {
   onSessionJoined: (id: string, initialCode: string, userRole: string) => void;
 }
 
- const socket = io("http://localhost:4000");
-//const socket = io("https://obscure-retreat-63973-92abc2c62e6e.herokuapp.com"); // Ensure the socket connection is established
+ //const socket = io("http://localhost:4000");
+const socket = io("https://obscure-retreat-63973-92abc2c62e6e.herokuapp.com"); // Ensure the socket connection is established
  // Ensure the socket connection is established
 
 const JoinSession: React.FC<JoinSessionProps> = ({ onSessionJoined }) => {
@@ -36,9 +36,9 @@ const JoinSession: React.FC<JoinSessionProps> = ({ onSessionJoined }) => {
       const urlParts = sessionUrl.split("/");
       const id = urlParts[urlParts.length - 1];
       const response = await axios.get(
-        //`https://obscure-retreat-63973-92abc2c62e6e.herokuapp.com/api/sessions/${id}`
+        `https://obscure-retreat-63973-92abc2c62e6e.herokuapp.com/api/sessions/${id}`
 
-        `http://localhost:4000/api/sessions/${id}`
+      //  `http://localhost:4000/api/sessions/${id}`
       );
       const initialCode = response.data.code;
       onSessionJoined(response.data.id, initialCode, userName);

@@ -4,8 +4,8 @@ import { io } from "socket.io-client";
 import CreateSession from "./components/CreateSession";
 import JoinSession from "./components/JoinSession";
 
-//const socket = io("https://obscure-retreat-63973-92abc2c62e6e.herokuapp.com"); // for production
-const socket = io("http://localhost:4000"); // for local testing
+const socket = io("https://obscure-retreat-63973-92abc2c62e6e.herokuapp.com"); // for production
+//const socket = io("http://localhost:4000"); // for local testing
 
 const App: React.FC = () => {
   const [code, setCode] = useState<string>("");
@@ -194,10 +194,10 @@ const App: React.FC = () => {
     setRole(userRole);
     setCode(initialCode); // Set the initial code for the creator
     socket.emit("codeChange", { sessionId: id, code: initialCode }); // Emit the initial code to all participants
-    setSessionLink(`http://localhost:3000/session/${id}`); // for production
+    //setSessionLink(`http://localhost:3000/session/${id}`); // for production
 
     // Set the session link
-    // setSessionLink(`https://client-real-time-collab-playground-for-code.vercel.app/session/${id}`); // for production
+    setSessionLink(`https://client-real-time-collab-playground-for-code.vercel.app/session/${id}`); // for production
     socket.emit("joinSession", id, userRole);
   };
 
